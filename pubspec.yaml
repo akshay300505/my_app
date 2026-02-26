@@ -1,4 +1,4 @@
-name: my_app
+name: Thrive360
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -32,14 +32,21 @@ dependencies:
     sdk: flutter
 
   cupertino_icons: ^1.0.8
-  firebase_core: ^2.27.0
-  firebase_auth: ^4.17.0
-  cloud_firestore: ^4.15.0
+  firebase_core: ^2.32.0
+  firebase_auth: ^4.19.0
+  cloud_firestore: ^4.17.5
   fl_chart: ^0.68.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_lints: ^3.0.1
+  flutter_launcher_icons: ^0.13.1
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/logo_icon.png"
 
 
   # The "flutter_lints" package below contains a set of recommended lints to
