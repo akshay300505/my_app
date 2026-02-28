@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_textfield.dart';
 import '../../core/utils/validators.dart';
@@ -27,10 +28,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              Color(0xFF1E1E2F),
-              Color(0xFF3A1C71),
-            ],
+            colors: [Color(0xFF1E1E2F), Color(0xFF3A1C71)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -38,10 +36,10 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         child: Center(
           child: SingleChildScrollView(
             child: Container(
-              width: 400,
+              width: 420,
               padding: const EdgeInsets.all(30),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.08), // updated
+                color: Colors.white.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: Colors.white24),
               ),
@@ -57,22 +55,31 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     const SizedBox(height: 25),
                     CustomTextField(
                       controller: emailController,
-                      hintText: "Email", // ✅ FIXED
+                      hintText: "Email",
                       icon: Icons.email_outlined,
                       validator: Validators.email,
+                      keyboardType: TextInputType.emailAddress,
                     ),
-                    const SizedBox(height: 25),
+                    const SizedBox(height: 18),
                     CustomButton(
                       text: "Send Reset Link",
                       onPressed: () {
-                        if (_formKey.currentState!.validate()) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("Password reset link sent."),
-                            ),
-                          );
-                        }
+                        if (!_formKey.currentState!.validate()) return;
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text("Password reset link sent."),
+                          ),
+                        );
                       },
+                    ),
+                    const SizedBox(height: 10),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text(
+                        "Back to Login",
+                        style: TextStyle(color: Colors.white70),
+                      ),
                     ),
                   ],
                 ),

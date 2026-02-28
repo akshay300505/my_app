@@ -42,7 +42,7 @@ class _SignUpPageState extends State<SignUpPage> {
         child: Center(
           child: SingleChildScrollView(
             child: Container(
-              width: 400,
+              width: 420,
               padding: const EdgeInsets.all(30),
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.08),
@@ -64,6 +64,7 @@ class _SignUpPageState extends State<SignUpPage> {
                       hintText: "Email",
                       icon: Icons.email_outlined,
                       validator: Validators.email,
+                      keyboardType: TextInputType.emailAddress,
                     ),
                     const SizedBox(height: 15),
                     CustomTextField(
@@ -73,18 +74,36 @@ class _SignUpPageState extends State<SignUpPage> {
                       obscureText: true,
                       validator: Validators.password,
                     ),
-                    const SizedBox(height: 25),
+                    const SizedBox(height: 18),
                     CustomButton(
                       text: "Sign Up",
                       loading: authProvider.loading,
-                      onPressed: () {
-                        if (_formKey.currentState!.validate()) {
-                          authProvider.signUp(
+                      onPressed: () async {
+                        if (!_formKey.currentState!.validate()) return;
+
+                        try {
+                          await authProvider.signUp(
                             emailController.text.trim(),
                             passwordController.text.trim(),
                           );
+                          // After signup, AuthWrapper will redirect to Dashboard automatically.
+                          if (!context.mounted) return;
+                          Navigator.pop(context); // optional: go back to sign in UI
+                        } catch (e) {
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(e.toString())),
+                          );
                         }
                       },
+                    ),
+                    const SizedBox(height: 18),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text(
+                        "Already have an account? Login",
+                        style: TextStyle(color: Colors.white70),
+                      ),
                     ),
                   ],
                 ),

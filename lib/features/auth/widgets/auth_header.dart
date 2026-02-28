@@ -14,32 +14,23 @@ class AuthHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const Text(
-          "Thrive360",
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        const SizedBox(height: 20),
         Text(
           title,
+          textAlign: TextAlign.center,
           style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
             color: Colors.white,
           ),
-          textAlign: TextAlign.center,
         ),
         const SizedBox(height: 8),
         Text(
           subtitle,
+          textAlign: TextAlign.center,
           style: const TextStyle(
             fontSize: 14,
             color: Colors.white70,
           ),
-          textAlign: TextAlign.center,
         ),
       ],
     );

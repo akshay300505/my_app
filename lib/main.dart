@@ -11,6 +11,9 @@ import 'providers/study_provider.dart';
 import 'providers/wellbeing_provider.dart';
 import 'providers/time_management_provider.dart';
 
+// ✅ ADD THIS IMPORT
+import 'features/auth/auth_wrapper.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
@@ -35,15 +38,8 @@ class Thrive360App extends StatelessWidget {
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme,
-        home: const Scaffold(
-          body: Center(
-            child: Text(
-              "Thrive360 App Running 🚀",
-              style: TextStyle(fontSize: 20),
-            ),
-          ),
-        ),
+        theme: AppTheme.lightTheme, // ✅ unchanged
+        home: const AuthWrapper(),  // ✅ THIS shows SignIn/SignUp and Dashboard flow
       ),
     );
   }

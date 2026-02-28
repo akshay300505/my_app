@@ -44,7 +44,7 @@ class _SignInPageState extends State<SignInPage> {
         child: Center(
           child: SingleChildScrollView(
             child: Container(
-              width: 400,
+              width: 420,
               padding: const EdgeInsets.all(30),
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.08),
@@ -66,6 +66,7 @@ class _SignInPageState extends State<SignInPage> {
                       hintText: "Email",
                       icon: Icons.email_outlined,
                       validator: Validators.email,
+                      keyboardType: TextInputType.emailAddress,
                     ),
                     const SizedBox(height: 15),
                     CustomTextField(
@@ -86,31 +87,38 @@ class _SignInPageState extends State<SignInPage> {
                           ),
                         ),
                         child: const Text(
-                          "Forgot Password?",
+                          "Forgot password?",
                           style: TextStyle(color: Colors.white70),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 18),
                     CustomButton(
                       text: "Login",
                       loading: authProvider.loading,
-                      onPressed: () {
-                        if (_formKey.currentState!.validate()) {
-                          authProvider.signIn(
+                      onPressed: () async {
+                        if (!_formKey.currentState!.validate()) return;
+
+                        try {
+                          await authProvider.signIn(
                             emailController.text.trim(),
                             passwordController.text.trim(),
+                          );
+                          // No need to navigate manually.
+                          // AuthWrapper will redirect after login.
+                        } catch (e) {
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(e.toString())),
                           );
                         }
                       },
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 18),
                     TextButton(
                       onPressed: () => Navigator.push(
                         context,
-                        MaterialPageRoute(
-                          builder: (_) => const SignUpPage(),
-                        ),
+                        MaterialPageRoute(builder: (_) => const SignUpPage()),
                       ),
                       child: const Text(
                         "Don't have an account? Sign Up",
