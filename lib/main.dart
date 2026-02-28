@@ -1,48 +1,50 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
-
 import 'firebase_options.dart';
-import 'splash/splash_screen.dart';
-import 'auth/sign_in_page.dart';
-import 'auth/sign_up_page.dart';
-import 'dashboard/dashboard_page.dart';
 
-Future<void> main() async {
+import 'core/theme/app_theme.dart';
+
+import 'providers/auth_provider.dart';
+import 'providers/dashboard_provider.dart';
+import 'providers/study_provider.dart';
+import 'providers/wellbeing_provider.dart';
+import 'providers/time_management_provider.dart';
+
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  runApp(const MyApp());
+  runApp(const Thrive360App());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class Thrive360App extends StatelessWidget {
+  const Thrive360App({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Thrive360',
-
-      theme: ThemeData(
-        useMaterial3: true,
-        fontFamily: 'Roboto',
-        scaffoldBackgroundColor: const Color(0xFFF7F9F9),
-        colorSchemeSeed: Colors.teal,
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => DashboardProvider()),
+        ChangeNotifierProvider(create: (_) => StudyProvider()),
+        ChangeNotifierProvider(create: (_) => WellbeingProvider()),
+        ChangeNotifierProvider(create: (_) => TimeManagementProvider()),
+      ],
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.lightTheme,
+        home: const Scaffold(
+          body: Center(
+            child: Text(
+              "Thrive360 App Running 🚀",
+              style: TextStyle(fontSize: 20),
+            ),
+          ),
+        ),
       ),
-
-      themeMode: ThemeMode.system,
-
-      initialRoute: '/',
-
-      routes: {
-        '/': (context) => const SplashScreen(),
-        '/signin': (context) => const SignInPage(),
-        '/signup': (context) => const SignUpPage(),
-        '/dashboard': (context) => const DashboardPage(),
-      },
     );
   }
 }
