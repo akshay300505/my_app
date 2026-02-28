@@ -14,7 +14,8 @@ class SignUpPage extends StatefulWidget {
   State<SignUpPage> createState() => _SignUpPageState();
 }
 
-class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateMixin {
+class _SignUpPageState extends State<SignUpPage>
+    with SingleTickerProviderStateMixin {
   late final TabController _tab;
 
   final _emailForm = GlobalKey<FormState>();
@@ -81,7 +82,10 @@ class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateM
                 alignment: Alignment.centerLeft,
                 child: Text(
                   "Create Account",
-                  style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700),
                 ),
               ),
               const SizedBox(height: 6),
@@ -107,33 +111,36 @@ class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateM
               const SizedBox(height: 16),
 
               SizedBox(
-                height: 330,
+                height: 360,
                 child: TabBarView(
                   controller: _tab,
                   children: [
-                    // EMAIL SIGN UP
+                    // ✅ EMAIL SIGN UP
                     Form(
                       key: _emailForm,
                       child: Column(
                         children: [
                           CustomTextField(
                             controller: emailController,
-                            hintText: 'Email',
+                            hintText: 'Email (@gmail.com)',
                             prefixIcon: Icons.mail_outline,
                             keyboardType: TextInputType.emailAddress,
-                            validator: Validators.email,
+                            validator: Validators.gmail,
                           ),
                           const SizedBox(height: 12),
                           CustomTextField(
                             controller: passController,
-                            hintText: 'Password',
+                            hintText: 'New Password',
                             prefixIcon: Icons.lock_outline,
                             obscureText: !_showPass,
                             validator: Validators.password,
                             suffix: IconButton(
-                              onPressed: () => setState(() => _showPass = !_showPass),
+                              onPressed: () =>
+                                  setState(() => _showPass = !_showPass),
                               icon: Icon(
-                                _showPass ? Icons.visibility_off : Icons.visibility,
+                                _showPass
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
                                 color: Colors.white.withValues(alpha: 0.75),
                               ),
                             ),
@@ -144,11 +151,15 @@ class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateM
                             hintText: 'Confirm Password',
                             prefixIcon: Icons.lock_outline,
                             obscureText: !_showConfirm,
-                            validator: (v) => Validators.confirmPassword(v, passController.text),
+                            validator: (v) =>
+                                Validators.confirmPassword(v, passController.text),
                             suffix: IconButton(
-                              onPressed: () => setState(() => _showConfirm = !_showConfirm),
+                              onPressed: () => setState(
+                                  () => _showConfirm = !_showConfirm),
                               icon: Icon(
-                                _showConfirm ? Icons.visibility_off : Icons.visibility,
+                                _showConfirm
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
                                 color: Colors.white.withValues(alpha: 0.75),
                               ),
                             ),
@@ -164,7 +175,8 @@ class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateM
                                   emailController.text.trim(),
                                   passController.text.trim(),
                                 );
-                                _snack("Verification email sent. Please verify your email.");
+                                _snack(
+                                    "Verification mail sent. Please verify your Gmail.");
                                 if (!context.mounted) return;
                                 Navigator.pop(context);
                               } catch (e) {
@@ -176,7 +188,7 @@ class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateM
                       ),
                     ),
 
-                    // PHONE SIGN UP (OTP creates/links phone user)
+                    // ✅ MOBILE SIGN UP (OTP)
                     Form(
                       key: _phoneForm,
                       child: Column(
@@ -192,7 +204,7 @@ class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateM
                           if (_otpSent)
                             CustomTextField(
                               controller: otpController,
-                              hintText: 'OTP',
+                              hintText: 'Enter OTP',
                               prefixIcon: Icons.sms_outlined,
                               keyboardType: TextInputType.number,
                               validator: Validators.otp,
@@ -203,7 +215,6 @@ class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateM
                             loading: auth.loading,
                             onPressed: () async {
                               if (!_phoneForm.currentState!.validate()) return;
-
                               try {
                                 if (!_otpSent) {
                                   await auth.sendOtp(
@@ -215,7 +226,8 @@ class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateM
                                     onError: (m) => _snack(m),
                                   );
                                 } else {
-                                  await auth.verifyOtpAndLogin(otpController.text.trim());
+                                  await auth.verifyOtpAndLogin(
+                                      otpController.text.trim());
                                 }
                               } catch (e) {
                                 _snack(e.toString());
@@ -234,7 +246,8 @@ class _SignUpPageState extends State<SignUpPage> with SingleTickerProviderStateM
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text("Already have an account? ",
-                      style: TextStyle(color: Colors.white.withValues(alpha: 0.75))),
+                      style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.75))),
                   TextButton(
                     onPressed: () => Navigator.pop(context),
                     child: const Text("Login"),

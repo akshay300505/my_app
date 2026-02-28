@@ -16,7 +16,6 @@ class AuthProvider extends ChangeNotifier {
     try {
       _loading = true;
       notifyListeners();
-
       await _auth.signInWithEmailAndPassword(email: email, password: password);
     } finally {
       _loading = false;
@@ -34,7 +33,7 @@ class AuthProvider extends ChangeNotifier {
         password: password,
       );
 
-      // ✅ Send verification email
+      // ✅ Send verification mail
       await cred.user?.sendEmailVerification();
     } finally {
       _loading = false;
@@ -56,15 +55,14 @@ class AuthProvider extends ChangeNotifier {
         timeout: const Duration(seconds: 60),
         forceResendingToken: _resendToken,
         verificationCompleted: (fb.PhoneAuthCredential credential) async {
-          // Auto-retrieval / instant verification
           await _auth.signInWithCredential(credential);
         },
         verificationFailed: (fb.FirebaseAuthException e) {
-          onError(e.message ?? 'Phone verification failed');
+          onError(e.message ?? "Phone verification failed");
         },
-        codeSent: (String verificationId, int? forceResendingToken) {
+        codeSent: (String verificationId, int? resendToken) {
           _verificationId = verificationId;
-          _resendToken = forceResendingToken;
+          _resendToken = resendToken;
           onCodeSent();
         },
         codeAutoRetrievalTimeout: (String verificationId) {
@@ -78,9 +76,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> verifyOtpAndLogin(String smsCode) async {
-    if (_verificationId == null) {
-      throw Exception('OTP not requested yet.');
-    }
+    if (_verificationId == null) throw Exception("OTP not requested yet");
     try {
       _loading = true;
       notifyListeners();

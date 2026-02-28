@@ -11,11 +11,13 @@ import 'widgets/auth_background.dart';
 
 class SignInPage extends StatefulWidget {
   const SignInPage({super.key});
+
   @override
   State<SignInPage> createState() => _SignInPageState();
 }
 
-class _SignInPageState extends State<SignInPage> with SingleTickerProviderStateMixin {
+class _SignInPageState extends State<SignInPage>
+    with SingleTickerProviderStateMixin {
   late final TabController _tab;
 
   final _emailForm = GlobalKey<FormState>();
@@ -60,6 +62,7 @@ class _SignInPageState extends State<SignInPage> with SingleTickerProviderStateM
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Header
               Row(
                 children: [
                   const Icon(Icons.blur_on, color: Colors.white),
@@ -79,7 +82,10 @@ class _SignInPageState extends State<SignInPage> with SingleTickerProviderStateM
                 alignment: Alignment.centerLeft,
                 child: Text(
                   "Welcome Back",
-                  style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700),
                 ),
               ),
               const SizedBox(height: 6),
@@ -92,6 +98,7 @@ class _SignInPageState extends State<SignInPage> with SingleTickerProviderStateM
               ),
               const SizedBox(height: 16),
 
+              // Tabs
               TabBar(
                 controller: _tab,
                 labelColor: Colors.white,
@@ -105,21 +112,21 @@ class _SignInPageState extends State<SignInPage> with SingleTickerProviderStateM
               const SizedBox(height: 16),
 
               SizedBox(
-                height: 310,
+                height: 320,
                 child: TabBarView(
                   controller: _tab,
                   children: [
-                    // EMAIL LOGIN
+                    // ✅ EMAIL LOGIN
                     Form(
                       key: _emailForm,
                       child: Column(
                         children: [
                           CustomTextField(
                             controller: emailController,
-                            hintText: 'Email',
+                            hintText: 'Email (@gmail.com)',
                             prefixIcon: Icons.mail_outline,
                             keyboardType: TextInputType.emailAddress,
-                            validator: Validators.email,
+                            validator: Validators.gmail,
                           ),
                           const SizedBox(height: 12),
                           CustomTextField(
@@ -129,28 +136,34 @@ class _SignInPageState extends State<SignInPage> with SingleTickerProviderStateM
                             obscureText: !_showPassword,
                             validator: Validators.password,
                             suffix: IconButton(
-                              onPressed: () => setState(() => _showPassword = !_showPassword),
+                              onPressed: () =>
+                                  setState(() => _showPassword = !_showPassword),
                               icon: Icon(
-                                _showPassword ? Icons.visibility_off : Icons.visibility,
+                                _showPassword
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
                                 color: Colors.white.withValues(alpha: 0.75),
                               ),
                             ),
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 6),
                           Align(
                             alignment: Alignment.centerRight,
                             child: TextButton(
                               onPressed: () => Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (_) => const ForgotPasswordPage()),
+                                MaterialPageRoute(
+                                    builder: (_) =>
+                                        const ForgotPasswordPage()),
                               ),
                               child: Text(
                                 "Forgot Password?",
-                                style: TextStyle(color: Colors.white.withValues(alpha: 0.75)),
+                                style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.75)),
                               ),
                             ),
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 10),
                           CustomButton(
                             text: 'Login',
                             loading: auth.loading,
@@ -170,7 +183,7 @@ class _SignInPageState extends State<SignInPage> with SingleTickerProviderStateM
                       ),
                     ),
 
-                    // PHONE LOGIN
+                    // ✅ MOBILE OTP LOGIN
                     Form(
                       key: _phoneForm,
                       child: Column(
@@ -183,15 +196,17 @@ class _SignInPageState extends State<SignInPage> with SingleTickerProviderStateM
                             validator: Validators.phone,
                           ),
                           const SizedBox(height: 12),
+
                           if (_otpSent)
                             CustomTextField(
                               controller: otpController,
-                              hintText: 'OTP',
+                              hintText: 'Enter OTP',
                               prefixIcon: Icons.sms_outlined,
                               keyboardType: TextInputType.number,
                               validator: Validators.otp,
                             ),
-                          const SizedBox(height: 14),
+
+                          const SizedBox(height: 16),
                           CustomButton(
                             text: _otpSent ? 'Verify OTP' : 'Send OTP',
                             loading: auth.loading,
@@ -209,7 +224,14 @@ class _SignInPageState extends State<SignInPage> with SingleTickerProviderStateM
                                     onError: (m) => _snack(m),
                                   );
                                 } else {
-                                  await auth.verifyOtpAndLogin(otpController.text.trim());
+                                  // validate OTP
+                                  if (Validators.otp(otpController.text) !=
+                                      null) {
+                                    _snack("Enter valid OTP");
+                                    return;
+                                  }
+                                  await auth.verifyOtpAndLogin(
+                                      otpController.text.trim());
                                 }
                               } catch (e) {
                                 _snack(e.toString());
@@ -228,7 +250,8 @@ class _SignInPageState extends State<SignInPage> with SingleTickerProviderStateM
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text("Don't have an account? ",
-                      style: TextStyle(color: Colors.white.withValues(alpha: 0.75))),
+                      style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.75))),
                   TextButton(
                     onPressed: () => Navigator.push(
                       context,
