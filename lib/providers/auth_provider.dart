@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 
@@ -9,46 +10,60 @@ class AuthProvider extends ChangeNotifier {
 
   Stream<fb.User?> get authStateChanges => _auth.authStateChanges();
 
+  // Android/iOS OTP
   String? _verificationId;
   int? _resendToken;
 
+  // Web OTP
+  fb.ConfirmationResult? _webConfirmation;
+
+  void _setLoading(bool v) {
+    _loading = v;
+    notifyListeners();
+  }
+
+  // ✅ EMAIL SIGN IN
   Future<void> signInWithEmail(String email, String password) async {
+    _setLoading(true);
     try {
-      _loading = true;
-      notifyListeners();
       await _auth.signInWithEmailAndPassword(email: email, password: password);
+    } on fb.FirebaseAuthException catch (e) {
+      throw Exception(e.message ?? "Login failed");
     } finally {
-      _loading = false;
-      notifyListeners();
+      _setLoading(false);
     }
   }
 
+  // ✅ EMAIL SIGN UP + SEND VERIFICATION MAIL
   Future<void> signUpWithEmail(String email, String password) async {
+    _setLoading(true);
     try {
-      _loading = true;
-      notifyListeners();
-
       final cred = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      // ✅ Send verification mail
-      await cred.user?.sendEmailVerification();
+      await cred.user?.sendEmailVerification(); // ✅ sends mail
+    } on fb.FirebaseAuthException catch (e) {
+      throw Exception(e.message ?? "Signup failed");
     } finally {
-      _loading = false;
-      notifyListeners();
+      _setLoading(false);
     }
   }
 
+  // ✅ SEND OTP (Web + Mobile)
   Future<void> sendOtp({
     required String phoneNumber,
     required VoidCallback onCodeSent,
     required void Function(String message) onError,
   }) async {
+    _setLoading(true);
     try {
-      _loading = true;
-      notifyListeners();
+      if (kIsWeb) {
+        _webConfirmation = await _auth.signInWithPhoneNumber(phoneNumber);
+        onCodeSent();
+        return;
+      }
 
       await _auth.verifyPhoneNumber(
         phoneNumber: phoneNumber,
@@ -69,17 +84,24 @@ class AuthProvider extends ChangeNotifier {
           _verificationId = verificationId;
         },
       );
+    } catch (e) {
+      onError(e.toString());
     } finally {
-      _loading = false;
-      notifyListeners();
+      _setLoading(false);
     }
   }
 
+  // ✅ VERIFY OTP
   Future<void> verifyOtpAndLogin(String smsCode) async {
-    if (_verificationId == null) throw Exception("OTP not requested yet");
+    _setLoading(true);
     try {
-      _loading = true;
-      notifyListeners();
+      if (kIsWeb) {
+        if (_webConfirmation == null) throw Exception("OTP not requested yet");
+        await _webConfirmation!.confirm(smsCode);
+        return;
+      }
+
+      if (_verificationId == null) throw Exception("OTP not requested yet");
 
       final credential = fb.PhoneAuthProvider.credential(
         verificationId: _verificationId!,
@@ -87,9 +109,10 @@ class AuthProvider extends ChangeNotifier {
       );
 
       await _auth.signInWithCredential(credential);
+    } on fb.FirebaseAuthException catch (e) {
+      throw Exception(e.message ?? "OTP verification failed");
     } finally {
-      _loading = false;
-      notifyListeners();
+      _setLoading(false);
     }
   }
 
