@@ -7,17 +7,69 @@ class AuthProvider extends ChangeNotifier {
   bool _loading = false;
   bool get loading => _loading;
 
-  // ✅ Fix for AuthWrapper stream
   Stream<fb.User?> get authStateChanges => _auth.authStateChanges();
 
-  Future<void> signIn(String email, String password) async {
+  String? _verificationId;
+  int? _resendToken;
+
+  Future<void> signInWithEmail(String email, String password) async {
     try {
       _loading = true;
       notifyListeners();
 
-      await _auth.signInWithEmailAndPassword(
+      await _auth.signInWithEmailAndPassword(email: email, password: password);
+    } finally {
+      _loading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> signUpWithEmail(String email, String password) async {
+    try {
+      _loading = true;
+      notifyListeners();
+
+      final cred = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
+      );
+
+      // ✅ Send verification email
+      await cred.user?.sendEmailVerification();
+    } finally {
+      _loading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> sendOtp({
+    required String phoneNumber,
+    required VoidCallback onCodeSent,
+    required void Function(String message) onError,
+  }) async {
+    try {
+      _loading = true;
+      notifyListeners();
+
+      await _auth.verifyPhoneNumber(
+        phoneNumber: phoneNumber,
+        timeout: const Duration(seconds: 60),
+        forceResendingToken: _resendToken,
+        verificationCompleted: (fb.PhoneAuthCredential credential) async {
+          // Auto-retrieval / instant verification
+          await _auth.signInWithCredential(credential);
+        },
+        verificationFailed: (fb.FirebaseAuthException e) {
+          onError(e.message ?? 'Phone verification failed');
+        },
+        codeSent: (String verificationId, int? forceResendingToken) {
+          _verificationId = verificationId;
+          _resendToken = forceResendingToken;
+          onCodeSent();
+        },
+        codeAutoRetrievalTimeout: (String verificationId) {
+          _verificationId = verificationId;
+        },
       );
     } finally {
       _loading = false;
@@ -25,15 +77,20 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> signUp(String email, String password) async {
+  Future<void> verifyOtpAndLogin(String smsCode) async {
+    if (_verificationId == null) {
+      throw Exception('OTP not requested yet.');
+    }
     try {
       _loading = true;
       notifyListeners();
 
-      await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
+      final credential = fb.PhoneAuthProvider.credential(
+        verificationId: _verificationId!,
+        smsCode: smsCode,
       );
+
+      await _auth.signInWithCredential(credential);
     } finally {
       _loading = false;
       notifyListeners();

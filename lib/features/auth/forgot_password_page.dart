@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart' as fb;
 
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_textfield.dart';
 import '../../core/utils/validators.dart';
-import 'widgets/auth_header.dart';
+import 'widgets/auth_background.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
@@ -14,7 +15,7 @@ class ForgotPasswordPage extends StatefulWidget {
 
 class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController emailController = TextEditingController();
+  final emailController = TextEditingController();
 
   @override
   void dispose() {
@@ -22,68 +23,61 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     super.dispose();
   }
 
+  void _snack(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF1E1E2F), Color(0xFF3A1C71)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: Center(
-          child: SingleChildScrollView(
-            child: Container(
-              width: 420,
-              padding: const EdgeInsets.all(30),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white24),
-              ),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const AuthHeader(
-                      title: "Reset Password",
-                      subtitle: "Enter your email to reset password",
-                    ),
-                    const SizedBox(height: 25),
-                    CustomTextField(
-                      controller: emailController,
-                      hintText: "Email",
-                      icon: Icons.email_outlined,
-                      validator: Validators.email,
-                      keyboardType: TextInputType.emailAddress,
-                    ),
-                    const SizedBox(height: 18),
-                    CustomButton(
-                      text: "Send Reset Link",
-                      onPressed: () {
-                        if (!_formKey.currentState!.validate()) return;
-
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("Password reset link sent."),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 10),
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text(
-                        "Back to Login",
-                        style: TextStyle(color: Colors.white70),
-                      ),
-                    ),
-                  ],
+      body: AuthBackground(
+        child: GlassCard(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    "Reset Password",
+                    style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700),
+                  ),
                 ),
-              ),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    "Enter your email to receive a reset link",
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.70)),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                CustomTextField(
+                  controller: emailController,
+                  hintText: "Email",
+                  prefixIcon: Icons.mail_outline,
+                  keyboardType: TextInputType.emailAddress,
+                  validator: Validators.email,
+                ),
+                const SizedBox(height: 16),
+                CustomButton(
+                  text: "Send Reset Link",
+                  onPressed: () async {
+                    if (!_formKey.currentState!.validate()) return;
+                    try {
+                      await fb.FirebaseAuth.instance.sendPasswordResetEmail(
+                        email: emailController.text.trim(),
+                      );
+                      _snack("Reset link sent to your email.");
+                      if (!context.mounted) return;
+                      Navigator.pop(context);
+                    } catch (e) {
+                      _snack(e.toString());
+                    }
+                  },
+                ),
+              ],
             ),
           ),
         ),

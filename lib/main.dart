@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
 
+import 'firebase_options.dart';
 import 'core/theme/app_theme.dart';
 
 import 'providers/auth_provider.dart';
@@ -11,7 +11,6 @@ import 'providers/study_provider.dart';
 import 'providers/wellbeing_provider.dart';
 import 'providers/time_management_provider.dart';
 
-// ✅ ADD THIS IMPORT
 import 'features/auth/auth_wrapper.dart';
 
 void main() async {
@@ -19,7 +18,6 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-
   runApp(const Thrive360App());
 }
 
@@ -38,8 +36,8 @@ class Thrive360App extends StatelessWidget {
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme, // ✅ unchanged
-        home: const AuthWrapper(),  // ✅ THIS shows SignIn/SignUp and Dashboard flow
+        theme: AppTheme.lightTheme,
+        home: const AuthWrapper(),
       ),
     );
   }
