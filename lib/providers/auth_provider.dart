@@ -6,29 +6,52 @@ import 'package:flutter/foundation.dart';
 class AuthProvider extends ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  // --------------------------
+  // Loading
+  // --------------------------
   bool _loading = false;
   bool get isLoading => _loading;
-
-  // OTP state
-  bool _otpFieldVisible = false;
-  bool get otpFieldVisible => _otpFieldVisible;
-
-  String? _verificationId; // Android
-  int? _forceResendToken; // Android
-  ConfirmationResult? _webConfirmation; // Web
-
-  int _resendSecondsLeft = 0;
-  int get resendSecondsLeft => _resendSecondsLeft;
-
-  Timer? _timer;
 
   void _setLoading(bool v) {
     _loading = v;
     notifyListeners();
   }
 
-  void _showOtpField(bool v) {
-    _otpFieldVisible = v;
+  // --------------------------
+  // OTP UI State
+  // --------------------------
+  bool _otpFieldVisible = false;
+  bool get otpFieldVisible => _otpFieldVisible;
+
+  // Android verification
+  String? _verificationId;
+  int? _forceResendToken;
+
+  // Web confirmation
+  ConfirmationResult? _webConfirmation;
+
+  // Resend timer
+  int _resendSecondsLeft = 0;
+  int get resendSecondsLeft => _resendSecondsLeft;
+
+  Timer? _timer;
+
+  void showOtpField() {
+    _otpFieldVisible = true;
+    notifyListeners();
+  }
+
+  void resetOtpUi() {
+    _verificationId = null;
+    _forceResendToken = null;
+    _webConfirmation = null;
+
+    _otpFieldVisible = false;
+
+    _timer?.cancel();
+    _timer = null;
+    _resendSecondsLeft = 0;
+
     notifyListeners();
   }
 
@@ -57,151 +80,240 @@ class AuthProvider extends ChangeNotifier {
   // Email Auth
   // --------------------------
 
-  Future<void> signInWithEmail({
+  /// Returns null on success, or an error message on failure.
+  Future<String?> signInWithEmail({
     required String email,
     required String password,
   }) async {
-    _setLoading(true);
     try {
+      _setLoading(true);
+
       final cred = await _auth.signInWithEmailAndPassword(
         email: email.trim(),
-        password: password,
+        password: password.trim(),
       );
+
+      // Refresh user state
       await cred.user?.reload();
+      return null;
     } on FirebaseAuthException catch (e) {
-      throw Exception(_friendlyAuthError(e));
+      return _friendlyAuthError(e);
+    } catch (_) {
+      return "Something went wrong. Please try again.";
     } finally {
       _setLoading(false);
     }
   }
 
-  Future<void> signUpWithEmail({
+  /// Sign up + send verification email (ONLY on signup).
+  /// Returns null on success, or an error message on failure.
+  Future<String?> signUpWithEmail({
     required String email,
     required String password,
   }) async {
-    _setLoading(true);
     try {
+      _setLoading(true);
+
       final cred = await _auth.createUserWithEmailAndPassword(
         email: email.trim(),
-        password: password,
+        password: password.trim(),
       );
 
       final user = cred.user;
-      if (user == null) throw Exception('User creation failed');
+      if (user == null) {
+        return "Account creation failed. Please try again.";
+      }
 
+      // ✅ secure Firebase-managed verification email
       await user.sendEmailVerification();
       await user.reload();
 
-      // Force strict flow: verify email then sign in
-      await _auth.signOut();
+      return null;
     } on FirebaseAuthException catch (e) {
-      throw Exception(_friendlyAuthError(e));
+      return _friendlyAuthError(e);
+    } catch (_) {
+      return "Something went wrong. Please try again.";
     } finally {
       _setLoading(false);
     }
   }
 
+  /// Used by SignInPage to decide if it should route to VerifyEmailPage.
+  Future<bool> isEmailVerified() async {
+    final user = _auth.currentUser;
+    if (user == null) return false;
+    await user.reload();
+    return _auth.currentUser?.emailVerified ?? false;
+  }
+
+  /// Verify email screen: resend verification email
+  Future<String?> resendVerificationEmail() async {
+    try {
+      _setLoading(true);
+
+      final user = _auth.currentUser;
+      if (user == null) return "No user signed in.";
+
+      await user.sendEmailVerification();
+      return null;
+    } on FirebaseAuthException catch (e) {
+      return _friendlyAuthError(e);
+    } catch (_) {
+      return "Something went wrong. Please try again.";
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  /// Forgot password (must send to exact email)
+  Future<String?> sendPasswordResetEmail({required String email}) async {
+    try {
+      _setLoading(true);
+      await _auth.sendPasswordResetEmail(email: email.trim());
+      return null;
+    } on FirebaseAuthException catch (e) {
+      return _friendlyAuthError(e);
+    } catch (_) {
+      return "Something went wrong. Please try again.";
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<void> signOut() async {
+    await _auth.signOut();
+    resetOtpUi();
+  }
+
   // --------------------------
-  // Phone OTP (works for Sign In + Sign Up)
+  // Phone OTP (Android + Web)
   // --------------------------
 
-  /// Matches your SignUpPage call:
-  /// await auth.sendOtp(phoneNumber: _phoneC.text.trim());
-  Future<void> sendOtp({
+  /// Returns null on success, or an error message on failure.
+  ///
+  /// NOTE (Web):
+  /// Firebase automatically uses reCAPTCHA. Ensure your web/index.html contains:
+  /// <div id="recaptcha-container"></div>
+  Future<String?> sendOtp({
     required String phoneNumber,
     bool forceResend = false,
   }) async {
-    _setLoading(true);
-
-    // Show OTP field immediately (your requirement)
-    _showOtpField(true);
-
     try {
+      _setLoading(true);
+
+      // show OTP field should be done by UI instantly (SignInPage calls showOtpField()).
+      // but if someone calls sendOtp directly, we still ensure:
+      _otpFieldVisible = true;
+      notifyListeners();
+
+      final number = phoneNumber.trim();
+
       if (kIsWeb) {
-        _webConfirmation = await _auth.signInWithPhoneNumber(phoneNumber);
+        // Web: triggers reCAPTCHA internally
+        _webConfirmation = await _auth.signInWithPhoneNumber(number);
         _startResendTimer(seconds: 60);
-        return;
+        return null;
       }
 
+      // Android/iOS
       await _auth.verifyPhoneNumber(
-        phoneNumber: phoneNumber,
-        forceResendingToken: forceResend ? _forceResendToken : null,
+        phoneNumber: number,
         timeout: const Duration(seconds: 60),
+        forceResendingToken: forceResend ? _forceResendToken : null,
+
         verificationCompleted: (PhoneAuthCredential credential) async {
-          // Auto-retrieval (Android) if possible
+          // Android may auto-verify
           await _auth.signInWithCredential(credential);
         },
+
         verificationFailed: (FirebaseAuthException e) {
-          throw Exception(_friendlyAuthError(e));
+          throw e;
         },
+
         codeSent: (String verificationId, int? resendToken) {
           _verificationId = verificationId;
           _forceResendToken = resendToken;
           _startResendTimer(seconds: 60);
         },
+
         codeAutoRetrievalTimeout: (String verificationId) {
           _verificationId = verificationId;
         },
       );
+
+      return null;
     } on FirebaseAuthException catch (e) {
-      throw Exception(_friendlyAuthError(e));
+      return _friendlyAuthError(e);
+    } catch (_) {
+      return "Something went wrong. Please try again.";
     } finally {
       _setLoading(false);
     }
   }
 
-  Future<void> verifyOtp({required String otp}) async {
-    _setLoading(true);
+  /// Returns null on success, or an error message on failure.
+  Future<String?> verifyOtp({required String otp}) async {
     try {
+      _setLoading(true);
+
+      final code = otp.trim();
+
       if (kIsWeb) {
         final conf = _webConfirmation;
-        if (conf == null) throw Exception('Please send OTP first.');
-        await conf.confirm(otp);
-        return;
+        if (conf == null) return "Please send OTP first.";
+        await conf.confirm(code);
+        return null;
       }
 
       final vid = _verificationId;
-      if (vid == null) throw Exception('Please send OTP first.');
+      if (vid == null) return "Please send OTP first.";
 
       final cred = PhoneAuthProvider.credential(
         verificationId: vid,
-        smsCode: otp,
+        smsCode: code,
       );
+
       await _auth.signInWithCredential(cred);
+      return null;
     } on FirebaseAuthException catch (e) {
-      throw Exception(_friendlyAuthError(e));
+      return _friendlyAuthError(e);
+    } catch (_) {
+      return "Something went wrong. Please try again.";
     } finally {
       _setLoading(false);
     }
   }
 
-  Future<void> resendOtp({required String phoneNumber}) async {
-    if (_resendSecondsLeft > 0) return;
-    await sendOtp(phoneNumber: phoneNumber, forceResend: true);
+  /// Optional: resend OTP (only when timer ends)
+  Future<String?> resendOtp({required String phoneNumber}) async {
+    if (_resendSecondsLeft > 0) {
+      return "Please wait $_resendSecondsLeft seconds to resend.";
+    }
+    return sendOtp(phoneNumber: phoneNumber, forceResend: true);
   }
 
-  void resetOtpUi() {
-    _verificationId = null;
-    _webConfirmation = null;
-    _showOtpField(false);
-    _timer?.cancel();
-    _resendSecondsLeft = 0;
-    notifyListeners();
-  }
-
+  // --------------------------
+  // Friendly errors
+  // --------------------------
   String _friendlyAuthError(FirebaseAuthException e) {
     final code = e.code.toLowerCase();
 
-    if (code.contains('invalid-email')) return 'Invalid email address.';
-    if (code.contains('user-not-found')) return 'No account found for that email.';
-    if (code.contains('wrong-password')) return 'Incorrect password.';
-    if (code.contains('email-already-in-use')) return 'Email is already registered.';
-    if (code.contains('weak-password')) return 'Password is too weak.';
-    if (code.contains('too-many-requests')) return 'Too many attempts. Try again later.';
-    if (code.contains('invalid-verification-code')) return 'Invalid OTP. Please try again.';
-    if (code.contains('session-expired')) return 'OTP expired. Please resend OTP.';
-    if (code.contains('invalid-phone-number')) return 'Invalid phone number.';
-    if (e.message != null && e.message!.trim().isNotEmpty) return e.message!;
+    if (code == 'invalid-email') return 'Invalid email address.';
+    if (code == 'user-not-found') return 'No account found for that email.';
+    if (code == 'wrong-password') return 'Incorrect password.';
+    if (code == 'email-already-in-use') return 'Email is already registered.';
+    if (code == 'weak-password') return 'Password is too weak (min 6 characters).';
+    if (code == 'too-many-requests') return 'Too many attempts. Try again later.';
+
+    // Phone OTP errors
+    if (code == 'invalid-verification-code') return 'Invalid OTP. Please try again.';
+    if (code == 'session-expired') return 'OTP expired. Please resend OTP.';
+    if (code == 'invalid-phone-number') return 'Invalid phone number. Use +91XXXXXXXXXX.';
+    if (code == 'quota-exceeded') return 'SMS quota exceeded. Try again later.';
+
+    // Web reCAPTCHA / domain issues sometimes appear like this:
+    if (e.message != null && e.message!.trim().isNotEmpty) return e.message!.trim();
+
     return 'Authentication failed. Please try again.';
   }
 }

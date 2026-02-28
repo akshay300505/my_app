@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart' as fb;
 
 import '../../providers/auth_provider.dart';
 import '../../core/utils/validators.dart';
@@ -16,7 +17,8 @@ class SignInPage extends StatefulWidget {
   State<SignInPage> createState() => _SignInPageState();
 }
 
-class _SignInPageState extends State<SignInPage> with SingleTickerProviderStateMixin {
+class _SignInPageState extends State<SignInPage>
+    with SingleTickerProviderStateMixin {
   late final TabController _tab;
 
   final _emailForm = GlobalKey<FormState>();
@@ -34,8 +36,10 @@ class _SignInPageState extends State<SignInPage> with SingleTickerProviderStateM
   void initState() {
     super.initState();
     _tab = TabController(length: 2, vsync: this);
+
     _tab.addListener(() {
       if (_tab.indexIsChanging) return;
+      if (!mounted) return;
       context.read<AuthProvider>().resetOtpUi();
       otpController.clear();
     });
@@ -56,35 +60,65 @@ class _SignInPageState extends State<SignInPage> with SingleTickerProviderStateM
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
+  // ================= EMAIL LOGIN =================
+  // ✅ Does NOT send email again
+  // ✅ Blocks user if email not verified
   Future<void> _emailLogin(AuthProvider auth) async {
+    if (auth.isLoading) return;
     if (!_emailForm.currentState!.validate()) return;
+
     try {
       await auth.signInWithEmail(
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
       );
+
+      // ✅ reload and verify
+      final user = fb.FirebaseAuth.instance.currentUser;
+      await user?.reload();
+      final refreshed = fb.FirebaseAuth.instance.currentUser;
+
+      if (refreshed == null) {
+        _snack("Login failed. Please try again.");
+        return;
+      }
+
+      if (!refreshed.emailVerified) {
+        _snack("Email not verified. Please verify from Gmail (Inbox/Spam).");
+        await fb.FirebaseAuth.instance.signOut();
+        return;
+      }
+
       _snack("Login success");
     } catch (e) {
       _snack(e.toString().replaceFirst('Exception: ', ''));
     }
   }
 
+  // ================= SEND OTP =================
   Future<void> _sendOtp(AuthProvider auth) async {
+    if (auth.isLoading) return;
     if (!_phoneForm.currentState!.validate()) return;
+
     try {
       await auth.sendOtp(phoneNumber: phoneController.text.trim());
       _snack("OTP sent");
     } catch (e) {
+      auth.resetOtpUi();
       _snack(e.toString().replaceFirst('Exception: ', ''));
     }
   }
 
+  // ================= VERIFY OTP =================
   Future<void> _verifyOtp(AuthProvider auth) async {
+    if (auth.isLoading) return;
+
     final err = Validators.otp6(otpController.text);
     if (err != null) {
       _snack(err);
       return;
     }
+
     try {
       await auth.verifyOtp(otp: otpController.text.trim());
       _snack("Login success");
@@ -122,7 +156,11 @@ class _SignInPageState extends State<SignInPage> with SingleTickerProviderStateM
                 alignment: Alignment.centerLeft,
                 child: Text(
                   "Welcome Back",
-                  style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               const SizedBox(height: 6),
@@ -152,6 +190,7 @@ class _SignInPageState extends State<SignInPage> with SingleTickerProviderStateM
                 child: TabBarView(
                   controller: _tab,
                   children: [
+                    // ================= EMAIL TAB =================
                     Form(
                       key: _emailForm,
                       child: Column(
@@ -171,9 +210,12 @@ class _SignInPageState extends State<SignInPage> with SingleTickerProviderStateM
                             obscureText: !_showPassword,
                             validator: Validators.password,
                             suffix: IconButton(
-                              onPressed: () => setState(() => _showPassword = !_showPassword),
+                              onPressed: () =>
+                                  setState(() => _showPassword = !_showPassword),
                               icon: Icon(
-                                _showPassword ? Icons.visibility_off : Icons.visibility,
+                                _showPassword
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
                                 color: Colors.white.withOpacity(0.75),
                               ),
                             ),
@@ -186,15 +228,22 @@ class _SignInPageState extends State<SignInPage> with SingleTickerProviderStateM
                                   ? null
                                   : () => Navigator.push(
                                         context,
-                                        MaterialPageRoute(builder: (_) => const ForgotPasswordPage()),
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              const ForgotPasswordPage(),
+                                        ),
                                       ),
                               child: Text(
                                 "Forgot Password?",
-                                style: TextStyle(color: Colors.white.withOpacity(0.75)),
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.75),
+                                ),
                               ),
                             ),
                           ),
                           const SizedBox(height: 10),
+
+                          // ✅ never pass null to CustomButton
                           CustomButton(
                             text: 'Login',
                             loading: auth.isLoading,
@@ -203,6 +252,8 @@ class _SignInPageState extends State<SignInPage> with SingleTickerProviderStateM
                         ],
                       ),
                     ),
+
+                    // ================= PHONE TAB =================
                     Form(
                       key: _phoneForm,
                       child: Column(
@@ -215,6 +266,7 @@ class _SignInPageState extends State<SignInPage> with SingleTickerProviderStateM
                             validator: Validators.phone,
                           ),
                           const SizedBox(height: 12),
+
                           if (auth.otpFieldVisible)
                             CustomTextField(
                               controller: otpController,
@@ -223,7 +275,10 @@ class _SignInPageState extends State<SignInPage> with SingleTickerProviderStateM
                               keyboardType: TextInputType.number,
                               validator: Validators.otp6,
                             ),
+
                           const SizedBox(height: 16),
+
+                          // ✅ never pass null to CustomButton
                           CustomButton(
                             text: auth.otpFieldVisible ? 'Verify OTP' : 'Send OTP',
                             loading: auth.isLoading,
