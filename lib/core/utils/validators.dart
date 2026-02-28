@@ -1,38 +1,54 @@
 class Validators {
-  static String? gmail(String? v) {
-    final value = (v ?? '').trim().toLowerCase();
-    if (value.isEmpty) return "Email is required";
-    final gmailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@gmail\.com$');
-    if (!gmailRegex.hasMatch(value)) return "Use a valid @gmail.com email";
+  static String? Function(String?)? gmail;
+
+  static String? Function(String?)? otp;
+
+  static String? requiredField(String? v, {String msg = 'This field is required'}) {
+    if (v == null || v.trim().isEmpty) return msg;
+    return null;
+  }
+
+  static String? gmailOnly(String? v) {
+    final req = requiredField(v, msg: 'Email is required');
+    if (req != null) return req;
+
+    final email = v!.trim();
+    final ok = RegExp(r'^[^@\s]+@gmail\.com$').hasMatch(email);
+    if (!ok) return 'Only @gmail.com emails are allowed';
     return null;
   }
 
   static String? password(String? v) {
-    final value = v ?? '';
-    if (value.isEmpty) return "Password is required";
-    if (value.length < 6) return "Password must be 6+ characters";
+    final req = requiredField(v, msg: 'Password is required');
+    if (req != null) return req;
+    if (v!.length < 6) return 'Password must be at least 6 characters';
     return null;
   }
 
   static String? confirmPassword(String? v, String original) {
-    final value = v ?? '';
-    if (value.isEmpty) return "Confirm password is required";
-    if (value != original) return "Passwords do not match";
+    final req = requiredField(v, msg: 'Confirm password is required');
+    if (req != null) return req;
+    if (v != original) return 'Passwords do not match';
     return null;
   }
 
+  // Basic E.164-ish check; you can tighten this if you want
   static String? phone(String? v) {
-    final value = (v ?? '').trim();
-    if (value.isEmpty) return "Mobile number is required";
-    if (!value.startsWith('+')) return "Use format like +91XXXXXXXXXX";
-    if (value.length < 10) return "Enter a valid number";
+    final req = requiredField(v, msg: 'Mobile number is required');
+    if (req != null) return req;
+
+    final raw = v!.trim();
+    // Expect like +91XXXXXXXXXX
+    if (!RegExp(r'^\+\d{10,15}$').hasMatch(raw)) {
+      return 'Enter phone in international format, e.g. +91XXXXXXXXXX';
+    }
     return null;
   }
 
-  static String? otp(String? v) {
-    final value = (v ?? '').trim();
-    if (value.isEmpty) return "OTP is required";
-    if (value.length != 6) return "Enter 6 digit OTP";
+  static String? otp6(String? v) {
+    final req = requiredField(v, msg: 'OTP is required');
+    if (req != null) return req;
+    if (!RegExp(r'^\d{6}$').hasMatch(v!.trim())) return 'OTP must be 6 digits';
     return null;
   }
 }

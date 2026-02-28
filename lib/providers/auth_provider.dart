@@ -1,122 +1,207 @@
+import 'dart:async';
+
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart' as fb;
 
 class AuthProvider extends ChangeNotifier {
-  final fb.FirebaseAuth _auth = fb.FirebaseAuth.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   bool _loading = false;
-  bool get loading => _loading;
+  bool get isLoading => _loading;
 
-  Stream<fb.User?> get authStateChanges => _auth.authStateChanges();
+  // OTP state
+  bool _otpFieldVisible = false;
+  bool get otpFieldVisible => _otpFieldVisible;
 
-  // Android/iOS OTP
-  String? _verificationId;
-  int? _resendToken;
+  String? _verificationId; // Android
+  int? _forceResendToken; // Android
+  ConfirmationResult? _webConfirmation; // Web
 
-  // Web OTP
-  fb.ConfirmationResult? _webConfirmation;
+  int _resendSecondsLeft = 0;
+  int get resendSecondsLeft => _resendSecondsLeft;
+
+  Timer? _timer;
 
   void _setLoading(bool v) {
     _loading = v;
     notifyListeners();
   }
 
-  // ✅ EMAIL SIGN IN
-  Future<void> signInWithEmail(String email, String password) async {
-    _setLoading(true);
-    try {
-      await _auth.signInWithEmailAndPassword(email: email, password: password);
-    } on fb.FirebaseAuthException catch (e) {
-      throw Exception(e.message ?? "Login failed");
-    } finally {
-      _setLoading(false);
-    }
+  void _showOtpField(bool v) {
+    _otpFieldVisible = v;
+    notifyListeners();
   }
 
-  // ✅ EMAIL SIGN UP + SEND VERIFICATION MAIL
-  Future<void> signUpWithEmail(String email, String password) async {
-    _setLoading(true);
-    try {
-      final cred = await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
+  void _startResendTimer({int seconds = 60}) {
+    _timer?.cancel();
+    _resendSecondsLeft = seconds;
+    notifyListeners();
 
-      await cred.user?.sendEmailVerification(); // ✅ sends mail
-    } on fb.FirebaseAuthException catch (e) {
-      throw Exception(e.message ?? "Signup failed");
-    } finally {
-      _setLoading(false);
-    }
+    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
+      _resendSecondsLeft--;
+      if (_resendSecondsLeft <= 0) {
+        _resendSecondsLeft = 0;
+        t.cancel();
+      }
+      notifyListeners();
+    });
   }
 
-  // ✅ SEND OTP (Web + Mobile)
-  Future<void> sendOtp({
-    required String phoneNumber,
-    required VoidCallback onCodeSent,
-    required void Function(String message) onError,
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  // --------------------------
+  // Email Auth
+  // --------------------------
+
+  Future<void> signInWithEmail({
+    required String email,
+    required String password,
   }) async {
     _setLoading(true);
     try {
+      final cred = await _auth.signInWithEmailAndPassword(
+        email: email.trim(),
+        password: password,
+      );
+      await cred.user?.reload();
+    } on FirebaseAuthException catch (e) {
+      throw Exception(_friendlyAuthError(e));
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<void> signUpWithEmail({
+    required String email,
+    required String password,
+  }) async {
+    _setLoading(true);
+    try {
+      final cred = await _auth.createUserWithEmailAndPassword(
+        email: email.trim(),
+        password: password,
+      );
+
+      final user = cred.user;
+      if (user == null) throw Exception('User creation failed');
+
+      await user.sendEmailVerification();
+      await user.reload();
+
+      // Force strict flow: verify email then sign in
+      await _auth.signOut();
+    } on FirebaseAuthException catch (e) {
+      throw Exception(_friendlyAuthError(e));
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // --------------------------
+  // Phone OTP (works for Sign In + Sign Up)
+  // --------------------------
+
+  /// Matches your SignUpPage call:
+  /// await auth.sendOtp(phoneNumber: _phoneC.text.trim());
+  Future<void> sendOtp({
+    required String phoneNumber,
+    bool forceResend = false,
+  }) async {
+    _setLoading(true);
+
+    // Show OTP field immediately (your requirement)
+    _showOtpField(true);
+
+    try {
       if (kIsWeb) {
         _webConfirmation = await _auth.signInWithPhoneNumber(phoneNumber);
-        onCodeSent();
+        _startResendTimer(seconds: 60);
         return;
       }
 
       await _auth.verifyPhoneNumber(
         phoneNumber: phoneNumber,
+        forceResendingToken: forceResend ? _forceResendToken : null,
         timeout: const Duration(seconds: 60),
-        forceResendingToken: _resendToken,
-        verificationCompleted: (fb.PhoneAuthCredential credential) async {
+        verificationCompleted: (PhoneAuthCredential credential) async {
+          // Auto-retrieval (Android) if possible
           await _auth.signInWithCredential(credential);
         },
-        verificationFailed: (fb.FirebaseAuthException e) {
-          onError(e.message ?? "Phone verification failed");
+        verificationFailed: (FirebaseAuthException e) {
+          throw Exception(_friendlyAuthError(e));
         },
         codeSent: (String verificationId, int? resendToken) {
           _verificationId = verificationId;
-          _resendToken = resendToken;
-          onCodeSent();
+          _forceResendToken = resendToken;
+          _startResendTimer(seconds: 60);
         },
         codeAutoRetrievalTimeout: (String verificationId) {
           _verificationId = verificationId;
         },
       );
-    } catch (e) {
-      onError(e.toString());
+    } on FirebaseAuthException catch (e) {
+      throw Exception(_friendlyAuthError(e));
     } finally {
       _setLoading(false);
     }
   }
 
-  // ✅ VERIFY OTP
-  Future<void> verifyOtpAndLogin(String smsCode) async {
+  Future<void> verifyOtp({required String otp}) async {
     _setLoading(true);
     try {
       if (kIsWeb) {
-        if (_webConfirmation == null) throw Exception("OTP not requested yet");
-        await _webConfirmation!.confirm(smsCode);
+        final conf = _webConfirmation;
+        if (conf == null) throw Exception('Please send OTP first.');
+        await conf.confirm(otp);
         return;
       }
 
-      if (_verificationId == null) throw Exception("OTP not requested yet");
+      final vid = _verificationId;
+      if (vid == null) throw Exception('Please send OTP first.');
 
-      final credential = fb.PhoneAuthProvider.credential(
-        verificationId: _verificationId!,
-        smsCode: smsCode,
+      final cred = PhoneAuthProvider.credential(
+        verificationId: vid,
+        smsCode: otp,
       );
-
-      await _auth.signInWithCredential(credential);
-    } on fb.FirebaseAuthException catch (e) {
-      throw Exception(e.message ?? "OTP verification failed");
+      await _auth.signInWithCredential(cred);
+    } on FirebaseAuthException catch (e) {
+      throw Exception(_friendlyAuthError(e));
     } finally {
       _setLoading(false);
     }
   }
 
-  Future<void> signOut() async {
-    await _auth.signOut();
+  Future<void> resendOtp({required String phoneNumber}) async {
+    if (_resendSecondsLeft > 0) return;
+    await sendOtp(phoneNumber: phoneNumber, forceResend: true);
+  }
+
+  void resetOtpUi() {
+    _verificationId = null;
+    _webConfirmation = null;
+    _showOtpField(false);
+    _timer?.cancel();
+    _resendSecondsLeft = 0;
+    notifyListeners();
+  }
+
+  String _friendlyAuthError(FirebaseAuthException e) {
+    final code = e.code.toLowerCase();
+
+    if (code.contains('invalid-email')) return 'Invalid email address.';
+    if (code.contains('user-not-found')) return 'No account found for that email.';
+    if (code.contains('wrong-password')) return 'Incorrect password.';
+    if (code.contains('email-already-in-use')) return 'Email is already registered.';
+    if (code.contains('weak-password')) return 'Password is too weak.';
+    if (code.contains('too-many-requests')) return 'Too many attempts. Try again later.';
+    if (code.contains('invalid-verification-code')) return 'Invalid OTP. Please try again.';
+    if (code.contains('session-expired')) return 'OTP expired. Please resend OTP.';
+    if (code.contains('invalid-phone-number')) return 'Invalid phone number.';
+    if (e.message != null && e.message!.trim().isNotEmpty) return e.message!;
+    return 'Authentication failed. Please try again.';
   }
 }
