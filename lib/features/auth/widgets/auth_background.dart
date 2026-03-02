@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 
 class AuthBackground extends StatelessWidget {
@@ -9,7 +8,7 @@ class AuthBackground extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // Gradient + glow blobs
+        // Background gradient
         Container(
           decoration: const BoxDecoration(
             gradient: RadialGradient(
@@ -23,24 +22,26 @@ class AuthBackground extends StatelessWidget {
             ),
           ),
         ),
-        Positioned(
+
+        // Glow blobs
+        const Positioned(
           left: -120,
           top: -120,
-          child: _GlowBlob(color: const Color(0xFF00D1FF), size: 260),
+          child: _GlowBlob(color: Color(0xFF00D1FF), size: 260),
         ),
-        Positioned(
+        const Positioned(
           right: -160,
           top: 60,
-          child: _GlowBlob(color: const Color(0xFFB86AD9), size: 320),
+          child: _GlowBlob(color: Color(0xFFB86AD9), size: 320),
         ),
-        Positioned(
+        const Positioned(
           left: 80,
           bottom: -180,
-          child: _GlowBlob(color: const Color(0xFF3EE6C5), size: 360),
+          child: _GlowBlob(color: Color(0xFF3EE6C5), size: 360),
         ),
 
-        // Content
-        SafeArea(child: Center(child: child)),
+        // ✅ DO NOT force Center here
+        SafeArea(child: child),
       ],
     );
   }
@@ -60,34 +61,9 @@ class _GlowBlob extends StatelessWidget {
         shape: BoxShape.circle,
         gradient: RadialGradient(
           colors: [
-            color.withValues(alpha: 0.55),
-            color.withValues(alpha: 0.0),
+            color.withOpacity(0.55),
+            color.withOpacity(0.0),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class GlassCard extends StatelessWidget {
-  final Widget child;
-  const GlassCard({super.key, required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(22),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-        child: Container(
-          width: 420,
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.10),
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
-          ),
-          child: child,
         ),
       ),
     );

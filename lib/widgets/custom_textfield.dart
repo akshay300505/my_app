@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class CustomTextField extends StatelessWidget {
   final TextEditingController controller;
@@ -20,6 +21,10 @@ class CustomTextField extends StatelessWidget {
     this.validator,
   });
 
+  bool get _isNumberField =>
+      keyboardType == TextInputType.number ||
+      keyboardType == TextInputType.phone;
+
   @override
   Widget build(BuildContext context) {
     return TextFormField(
@@ -28,27 +33,33 @@ class CustomTextField extends StatelessWidget {
       obscureText: obscureText,
       validator: validator,
       style: const TextStyle(color: Colors.white),
+      inputFormatters: _isNumberField
+          ? <TextInputFormatter>[FilteringTextInputFormatter.digitsOnly]
+          : null,
       decoration: InputDecoration(
+        isDense: true, // ✅ reduces height on small screens
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         hintText: hintText,
-        hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.65)),
+        hintStyle: TextStyle(color: Colors.white.withOpacity(0.65)),
         prefixIcon: prefixIcon != null
-            ? Icon(prefixIcon, color: Colors.white.withValues(alpha: 0.75))
+            ? Icon(prefixIcon, color: Colors.white.withOpacity(0.75))
             : null,
         suffixIcon: suffix,
         filled: true,
-        fillColor: Colors.white.withValues(alpha: 0.08),
+        fillColor: Colors.white.withOpacity(0.08),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.18)),
+          borderSide: BorderSide(color: Colors.white.withOpacity(0.18)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.18)),
+          borderSide: BorderSide(color: Colors.white.withOpacity(0.18)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.35)),
+          borderSide: BorderSide(color: Colors.white.withOpacity(0.35)),
         ),
+        errorStyle: const TextStyle(height: 1.0),
       ),
     );
   }

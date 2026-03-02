@@ -9,26 +9,37 @@ class GlassCard extends StatelessWidget {
   const GlassCard({
     super.key,
     required this.child,
-    this.borderRadius = 20,
-    this.padding = const EdgeInsets.all(16),
+    this.borderRadius = 22,
+    this.padding = const EdgeInsets.all(24),
   });
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(borderRadius),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Container(
-          padding: padding,
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.15),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // ✅ responsive width (works on phones + tablets)
+        final maxW = constraints.maxWidth;
+        final cardW = (maxW * 0.92).clamp(280.0, 420.0);
+
+        return Center(
+          child: ClipRRect(
             borderRadius: BorderRadius.circular(borderRadius),
-            border: Border.all(color: Colors.white.withOpacity(0.2)),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+              child: Container(
+                width: cardW,
+                padding: padding,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.10),
+                  borderRadius: BorderRadius.circular(borderRadius),
+                  border: Border.all(color: Colors.white.withOpacity(0.18)),
+                ),
+                child: child,
+              ),
+            ),
           ),
-          child: child,
-        ),
-      ),
+        );
+      },
     );
   }
 }

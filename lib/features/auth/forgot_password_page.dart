@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart' as fb;
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_textfield.dart';
 import '../../core/utils/validators.dart';
+import '../../widgets/glass_card.dart'; // ✅ FIX: import GlassCard
 import 'widgets/auth_background.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
@@ -26,9 +27,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   }
 
   void _snack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg)),
-    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   Future<void> _sendReset() async {
@@ -45,7 +45,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       Navigator.pop(context);
     } catch (e) {
       if (!mounted) return;
-      _snack(e.toString());
+      _snack(e.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -53,51 +53,61 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       body: AuthBackground(
-        child: GlassCard(
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    "Reset Password",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                    ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(16, 20, 16, 20 + bottomInset),
+            child: Center(
+              child: GlassCard(
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          "Reset Password",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          "Enter your Gmail to receive a reset link",
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      CustomTextField(
+                        controller: emailController,
+                        hintText: "Email (@gmail.com)",
+                        prefixIcon: Icons.mail_outline,
+                        keyboardType: TextInputType.emailAddress,
+                        validator: Validators.gmailOnly, // ✅ FIX: correct validator
+                      ),
+                      const SizedBox(height: 16),
+                      CustomButton(
+                        text: "Send Reset Link",
+                        loading: _sending,
+                        onPressed: _sendReset,
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    "Enter your Gmail to receive a reset link",
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                CustomTextField(
-                  controller: emailController,
-                  hintText: "Email (@gmail.com)",
-                  prefixIcon: Icons.mail_outline,
-                  keyboardType: TextInputType.emailAddress,
-                  validator: Validators.gmail, // ✅ Gmail only
-                ),
-                const SizedBox(height: 16),
-                CustomButton(
-                  text: "Send Reset Link",
-                  loading: _sending,
-                  onPressed: _sendReset,
-                ),
-              ],
+              ),
             ),
           ),
         ),

@@ -6,6 +6,7 @@ import '../../providers/auth_provider.dart';
 import '../../core/utils/validators.dart';
 import '../../widgets/custom_button.dart';
 import '../../widgets/custom_textfield.dart';
+import '../../widgets/glass_card.dart'; // ✅ IMPORTANT (fixes GlassCard error)
 import 'forgot_password_page.dart';
 import 'sign_up_page.dart';
 import 'widgets/auth_background.dart';
@@ -73,7 +74,6 @@ class _SignInPageState extends State<SignInPage>
         password: passwordController.text.trim(),
       );
 
-      // ✅ reload and verify
       final user = fb.FirebaseAuth.instance.currentUser;
       await user?.reload();
       final refreshed = fb.FirebaseAuth.instance.currentUser;
@@ -131,192 +131,209 @@ class _SignInPageState extends State<SignInPage>
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
 
+    final media = MediaQuery.of(context);
+    final bottomInset = media.viewInsets.bottom;
+
+    final availableH =
+        media.size.height - media.padding.top - media.padding.bottom - bottomInset;
+
+    // ✅ responsive height (no fixed 320)
+    final tabViewHeight = (availableH * 0.40).clamp(260.0, 430.0);
+
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       body: AuthBackground(
-        child: GlassCard(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.blur_on, color: Colors.white),
-                  const SizedBox(width: 10),
-                  Text(
-                    "Thrive360",
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.95),
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 18),
-              const Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  "Welcome Back",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 6),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  "Login to continue your journey",
-                  style: TextStyle(color: Colors.white.withOpacity(0.70)),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              TabBar(
-                controller: _tab,
-                labelColor: Colors.white,
-                unselectedLabelColor: Colors.white.withOpacity(0.65),
-                indicatorColor: const Color(0xFF3EE6C5),
-                tabs: const [
-                  Tab(text: 'Email'),
-                  Tab(text: 'Mobile'),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              SizedBox(
-                height: 320,
-                child: TabBarView(
-                  controller: _tab,
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(16, 20, 16, 20 + bottomInset),
+            child: Center(
+              child: GlassCard(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    // ================= EMAIL TAB =================
-                    Form(
-                      key: _emailForm,
-                      child: Column(
-                        children: [
-                          CustomTextField(
-                            controller: emailController,
-                            hintText: 'Email (@gmail.com)',
-                            prefixIcon: Icons.mail_outline,
-                            keyboardType: TextInputType.emailAddress,
-                            validator: Validators.gmailOnly,
+                    Row(
+                      children: [
+                        const Icon(Icons.blur_on, color: Colors.white),
+                        const SizedBox(width: 10),
+                        Text(
+                          "Thrive360",
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.95),
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
                           ),
-                          const SizedBox(height: 12),
-                          CustomTextField(
-                            controller: passwordController,
-                            hintText: 'Password',
-                            prefixIcon: Icons.lock_outline,
-                            obscureText: !_showPassword,
-                            validator: Validators.password,
-                            suffix: IconButton(
-                              onPressed: () =>
-                                  setState(() => _showPassword = !_showPassword),
-                              icon: Icon(
-                                _showPassword
-                                    ? Icons.visibility_off
-                                    : Icons.visibility,
-                                color: Colors.white.withOpacity(0.75),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: TextButton(
-                              onPressed: auth.isLoading
-                                  ? null
-                                  : () => Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) =>
-                                              const ForgotPasswordPage(),
-                                        ),
-                                      ),
-                              child: Text(
-                                "Forgot Password?",
-                                style: TextStyle(
-                                  color: Colors.white.withOpacity(0.75),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 10),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        "Welcome Back",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        "Login to continue your journey",
+                        style: TextStyle(color: Colors.white.withOpacity(0.70)),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
 
-                          // ✅ never pass null to CustomButton
-                          CustomButton(
-                            text: 'Login',
-                            loading: auth.isLoading,
-                            onPressed: () => _emailLogin(auth),
+                    TabBar(
+                      controller: _tab,
+                      labelColor: Colors.white,
+                      unselectedLabelColor: Colors.white.withOpacity(0.65),
+                      indicatorColor: const Color(0xFF3EE6C5),
+                      tabs: const [
+                        Tab(text: 'Email'),
+                        Tab(text: 'Mobile'),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    SizedBox(
+                      height: tabViewHeight,
+                      child: TabBarView(
+                        controller: _tab,
+                        children: [
+                          // ================= EMAIL TAB =================
+                          Form(
+                            key: _emailForm,
+                            child: Column(
+                              children: [
+                                CustomTextField(
+                                  controller: emailController,
+                                  hintText: 'Email (@gmail.com)',
+                                  prefixIcon: Icons.mail_outline,
+                                  keyboardType: TextInputType.emailAddress,
+                                  validator: Validators.gmailOnly,
+                                ),
+                                const SizedBox(height: 12),
+                                CustomTextField(
+                                  controller: passwordController,
+                                  hintText: 'Password',
+                                  prefixIcon: Icons.lock_outline,
+                                  obscureText: !_showPassword,
+                                  validator: Validators.password,
+                                  suffix: IconButton(
+                                    onPressed: () =>
+                                        setState(() => _showPassword = !_showPassword),
+                                    icon: Icon(
+                                      _showPassword
+                                          ? Icons.visibility_off
+                                          : Icons.visibility,
+                                      color: Colors.white.withOpacity(0.75),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: TextButton(
+                                    onPressed: auth.isLoading
+                                        ? null
+                                        : () => Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    const ForgotPasswordPage(),
+                                              ),
+                                            ),
+                                    child: Text(
+                                      "Forgot Password?",
+                                      style: TextStyle(
+                                        color: Colors.white.withOpacity(0.75),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+
+                                CustomButton(
+                                  text: 'Login',
+                                  loading: auth.isLoading,
+                                  onPressed: () => _emailLogin(auth),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          // ================= PHONE TAB =================
+                          Form(
+                            key: _phoneForm,
+                            child: Column(
+                              children: [
+                                CustomTextField(
+                                  controller: phoneController,
+                                  hintText: 'Mobile (+91XXXXXXXXXX)',
+                                  prefixIcon: Icons.phone_android,
+                                  keyboardType: TextInputType.phone,
+                                  validator: Validators.phone,
+                                ),
+                                const SizedBox(height: 12),
+
+                                if (auth.otpFieldVisible)
+                                  CustomTextField(
+                                    controller: otpController,
+                                    hintText: 'Enter 6-digit OTP',
+                                    prefixIcon: Icons.sms_outlined,
+                                    keyboardType: TextInputType.number,
+                                    validator: Validators.otp6,
+                                  ),
+
+                                const SizedBox(height: 16),
+
+                                CustomButton(
+                                  text: auth.otpFieldVisible ? 'Verify OTP' : 'Send OTP',
+                                  loading: auth.isLoading,
+                                  onPressed: () {
+                                    if (!auth.otpFieldVisible) {
+                                      _sendOtp(auth);
+                                    } else {
+                                      _verifyOtp(auth);
+                                    }
+                                  },
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
                     ),
 
-                    // ================= PHONE TAB =================
-                    Form(
-                      key: _phoneForm,
-                      child: Column(
-                        children: [
-                          CustomTextField(
-                            controller: phoneController,
-                            hintText: 'Mobile (+91XXXXXXXXXX)',
-                            prefixIcon: Icons.phone_android,
-                            keyboardType: TextInputType.phone,
-                            validator: Validators.phone,
-                          ),
-                          const SizedBox(height: 12),
-
-                          if (auth.otpFieldVisible)
-                            CustomTextField(
-                              controller: otpController,
-                              hintText: 'Enter 6-digit OTP',
-                              prefixIcon: Icons.sms_outlined,
-                              keyboardType: TextInputType.number,
-                              validator: Validators.otp6,
-                            ),
-
-                          const SizedBox(height: 16),
-
-                          // ✅ never pass null to CustomButton
-                          CustomButton(
-                            text: auth.otpFieldVisible ? 'Verify OTP' : 'Send OTP',
-                            loading: auth.isLoading,
-                            onPressed: () {
-                              if (!auth.otpFieldVisible) {
-                                _sendOtp(auth);
-                              } else {
-                                _verifyOtp(auth);
-                              }
-                            },
-                          ),
-                        ],
-                      ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          "Don't have an account? ",
+                          style: TextStyle(color: Colors.white.withOpacity(0.75)),
+                        ),
+                        TextButton(
+                          onPressed: auth.isLoading
+                              ? null
+                              : () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const SignUpPage(),
+                                    ),
+                                  ),
+                          child: const Text("Sign Up"),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    "Don't have an account? ",
-                    style: TextStyle(color: Colors.white.withOpacity(0.75)),
-                  ),
-                  TextButton(
-                    onPressed: auth.isLoading
-                        ? null
-                        : () => Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const SignUpPage()),
-                            ),
-                    child: const Text("Sign Up"),
-                  ),
-                ],
-              ),
-            ],
+            ),
           ),
         ),
       ),
