@@ -17,22 +17,27 @@ class GlassCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        // ✅ responsive width (works on phones + tablets)
-        final maxW = constraints.maxWidth;
-        final cardW = (maxW * 0.92).clamp(280.0, 420.0);
+        // Responsive width (mobile + tablet + web)
+        final maxWidth = constraints.maxWidth;
+        final cardWidth = (maxWidth * 0.92).clamp(280.0, 420.0);
 
         return Center(
           child: ClipRRect(
             borderRadius: BorderRadius.circular(borderRadius),
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+              filter: ImageFilter.blur(
+                sigmaX: 18,
+                sigmaY: 18,
+              ),
               child: Container(
-                width: cardW,
+                width: cardWidth,
                 padding: padding,
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.10),
                   borderRadius: BorderRadius.circular(borderRadius),
-                  border: Border.all(color: Colors.white.withOpacity(0.18)),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.18),
+                  ),
                 ),
                 child: child,
               ),
